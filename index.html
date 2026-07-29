@@ -165,9 +165,22 @@
   }
   .detail h4:first-child{margin-top:.9rem}
   .srcs{list-style:none; margin:0; padding:0; font-family:var(--mono); font-size:.72rem}
-  .srcs li{padding:.28rem 0; border-bottom:1px solid var(--rule-soft); line-height:1.5}
+  .srcs li{padding:.4rem 0; border-bottom:1px solid var(--rule-soft); line-height:1.55}
   .srcs li:last-child{border-bottom:none}
   .srcs .d{color:var(--faint)}
+  .srcs a{
+    color:var(--ink); text-decoration:underline;
+    text-decoration-color:var(--accent); text-underline-offset:3px;
+    text-decoration-thickness:1px; overflow-wrap:anywhere;
+  }
+  .srcs a:hover{color:var(--accent)}
+  .srcs a::after{content:" ↗"; color:var(--accent); text-decoration:none; font-size:.9em}
+  .srcs .nolink{color:var(--muted)}
+  .verified{
+    font-family:var(--mono); font-size:.62rem; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--faint);
+    margin-top:1.4rem; padding-top:.8rem; border-top:1px solid var(--rule);
+  }
   @supports (interpolate-size: allow-keywords){
     :root{interpolate-size:allow-keywords}
     details::details-content{
@@ -245,7 +258,7 @@
 <main class="wrap">
 
   <header class="masthead">
-    <p class="kicker">Issue 01 <span class="sep">·</span> Week of <!--DATE:START-->27 July 2026<!--DATE:END--></p>
+    <p class="kicker">Issue 01 <span class="sep">·</span> Week of 27 July 2026</p>
     <h1>The competitive signal isn't where your tools are looking</h1>
     <p class="standfirst">A working competitive digest for geospatial AI and defense — a market where the standard AI competitive-intelligence stack returns an empty result set.</p>
     <p class="byline">
@@ -255,14 +268,12 @@
     </p>
   </header>
 
-  <!-- ============ 01 ============ -->
   <section>
     <div class="sec-head">
       <span class="sec-num">01</span>
       <h2>Why the standard playbook returns nothing</h2>
     </div>
     <p class="lede">Point a conventional AI competitive-intelligence workflow at Vantor and it comes back empty. Not because there's no signal — because Vantor has no G2 listing, runs no ad campaigns, and publishes no pricing page. The signal in this market is real, dense, and mostly filed with the federal government.</p>
-
     <div class="pairs">
       <div class="pair"><div class="dead">G2 / Capterra review mining</div><div class="live">SAM.gov &amp; USASpending award feeds</div></div>
       <div class="pair"><div class="dead">Meta / Google ad libraries</div><div class="live">arXiv &amp; Hugging Face model releases</div></div>
@@ -271,11 +282,9 @@
       <div class="pair"><div class="dead">Website / SEO teardowns</div><div class="live">API changelogs &amp; data-catalog additions</div></div>
       <div class="pair"><div class="dead">LinkedIn hiring-signal scrapes</div><div class="live">Partnership &amp; funding announcements</div></div>
     </div>
-
     <p class="pairs-note">The left column is designed for PLG SaaS: many small buyers who leave public traces. The right column is designed for a market with a few dozen buyers, most of whom classify their purchases. Same technique, different plumbing.</p>
   </section>
 
-  <!-- ============ 02 ============ -->
   <section>
     <div class="sec-head">
       <span class="sec-num">02</span>
@@ -283,15 +292,11 @@
     </div>
     <p class="lede">Five entries. The implication leads; the evidence supports it. Tap any entry for the full signal and sources.</p>
 
-    <!--ENTRIES:START-->
-
-    <!-- GOOGLE -->
     <article class="entry">
       <div class="entry-top">
         <span class="rank">01</span>
         <h3 class="name">Google</h3>
-        <span class="tag">Model release</span>
-        <span class="tag">Platform</span>
+        <span class="tag">Model release</span><span class="tag">Platform</span>
       </div>
       <p class="sowhat">Google made the representation layer free. Any positioning that rests on model quality is now competing against zero.</p>
 
@@ -308,30 +313,28 @@
       <details>
         <summary>Detail &amp; sources</summary>
         <div class="detail">
-          <h4>What's actually new</h4>
-          <p>Two distinct things, often conflated. AlphaEarth Foundations (DeepMind, July 2025) is a geospatial foundation model that fuses Sentinel-2 optical, Sentinel-1 radar, and Landsat thermal into a compact per-pixel embedding; published parameter estimates run 480M–1B. Earth AI + Geospatial Reasoning (October 2025) is the orchestration layer on top, open to trusted testers.</p>
-          <h4>Where this cuts against us</h4>
-          <p>The embeddings are annual and derived from public sensors — which is exactly why they're free, and exactly what bounds them. They describe what a place <em>is</em> over a year. They cannot describe what changed on Tuesday. That's the boundary of the free tier, and it's the boundary of Google's threat.</p>
-          <h4>Where it genuinely hurts</h4>
-          <p>For any customer whose question is annual and continental — land cover, crop type, deforestation baselines — the free stack is now sufficient. That is real revenue that no longer needs a commercial provider.</p>
+      <h4>What's actually new</h4>
+      <p>Two distinct things, often conflated. AlphaEarth Foundations (DeepMind, July 2025) is a geospatial foundation model that fuses Sentinel-2 optical, Sentinel-1 radar, and Landsat thermal into a compact per-pixel embedding; published parameter estimates run 480M–1B. Earth AI + Geospatial Reasoning (October 2025) is the orchestration layer on top, open to trusted testers.</p>
+      <h4>Where this cuts against us</h4>
+      <p>The embeddings are annual and derived from public sensors — which is exactly why they're free, and exactly what bounds them. They describe what a place <em>is</em> over a year. They cannot describe what changed on Tuesday. That's the boundary of the free tier, and it's the boundary of Google's threat.</p>
+      <h4>Where it genuinely hurts</h4>
+      <p>For any customer whose question is annual and continental — land cover, crop type, deforestation baselines — the free stack is now sufficient. That is real revenue that no longer needs a commercial provider.</p>
           <h4>Sources</h4>
           <ul class="srcs">
-            <li>DeepMind — AlphaEarth Foundations announcement <span class="d">· Jul 2025</span></li>
-            <li>Earth Engine Data Catalog — GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL</li>
-            <li>research.google — Google Earth AI: foundation models and cross-modal reasoning</li>
-            <li>blog.google — New updates and more access to Google Earth AI <span class="d">· 23 Oct 2025</span></li>
+    <li><a href="https://deepmind.google/blog/alphaearth-foundations-helps-map-our-planet-in-unprecedented-detail/" target="_blank" rel="noopener">DeepMind — AlphaEarth Foundations helps map our planet in unprecedented detail</a> <span class="d">· Jul 2025</span></li>
+    <li><a href="https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL" target="_blank" rel="noopener">Earth Engine Data Catalog — Satellite Embedding V1 (annual)</a> <span class="d">· current</span></li>
+    <li><a href="https://research.google/blog/google-earth-ai-unlocking-geospatial-insights-with-foundation-models-and-cross-modal-reasoning/" target="_blank" rel="noopener">research.google — Google Earth AI: foundation models and cross-modal reasoning</a> <span class="d">· 2025</span></li>
+    <li><a href="https://blog.google/innovation-and-ai/technology/research/new-updates-and-more-access-to-google-earth-ai/" target="_blank" rel="noopener">blog.google — New updates and more access to Google Earth AI</a> <span class="d">· 23 Oct 2025</span></li>
           </ul>
         </div>
       </details>
     </article>
 
-    <!-- VANTOR -->
     <article class="entry">
       <div class="entry-top">
         <span class="rank">02</span>
         <h3 class="name">Vantor</h3>
-        <span class="tag">Partnership</span>
-        <span class="tag">Structural</span>
+        <span class="tag">Partnership</span><span class="tag">Structural</span>
       </div>
       <p class="sowhat">Vantor is the only competitor running Planet's entire playbook — fleet, software, and government trust — and in April it started buying the one thing we call ours.</p>
 
@@ -348,31 +351,30 @@
       <details>
         <summary>Detail &amp; sources</summary>
         <div class="detail">
-          <h4>Correction worth carrying into the room</h4>
-          <p>It is commonly said that Vantor gets its satellites through its sister company. That's backwards, and the direction matters. <b>Vantor owns and operates the WorldView constellation directly</b> — four legacy electro-optical satellites plus six WorldView Legion. Lanteris (formerly Maxar Space Systems) is the manufacturer, not the operator. Vantor is a vertically integrated fleet owner, which makes it a materially stronger competitor than the “software company that buys imagery” framing suggests.</p>
-          <h4>Why the Google partnership is the sharper signal</h4>
-          <p>Bigger than the constellation news. Vantor didn't build a rival foundation model — it took Google's and put it somewhere Google can't go alone. That is the emerging shape of this market: model quality from the hyperscaler, deployment and accreditation from the fleet owner. Planet needs a credible answer to “can this run in our SCIF.”</p>
-          <h4>Where this cuts against us</h4>
-          <p>The revisit gap is our position and it has a stated expiry. Pulse targets 15-minute revisit at 40 cm — better resolution than PlanetScope at frequencies approaching daily monitoring. If it ships on schedule, the “near-daily” argument weakens from 2027 and is contested by 2029.</p>
+      <h4>Correction worth carrying into the room</h4>
+      <p>It is commonly said that Vantor gets its satellites through its sister company. That's backwards, and the direction matters. <b>Vantor owns and operates the WorldView constellation directly</b> — four legacy electro-optical satellites plus six WorldView Legion. Lanteris (formerly Maxar Space Systems) is the manufacturer, not the operator. Vantor is a vertically integrated fleet owner, which makes it a materially stronger competitor than the “software company that buys imagery” framing suggests.</p>
+      <h4>Why the Google partnership is the sharper signal</h4>
+      <p>Bigger than the constellation news. Vantor didn't build a rival foundation model — it took Google's and put it somewhere Google can't go alone. That is the emerging shape of this market: model quality from the hyperscaler, deployment and accreditation from the fleet owner. Planet needs a credible answer to “can this run in our SCIF.”</p>
+      <h4>Where this cuts against us</h4>
+      <p>The revisit gap is our position and it has a stated expiry. Pulse targets 15-minute revisit at 40 cm — better resolution than PlanetScope at frequencies approaching daily monitoring. If it ships on schedule, the “near-daily” argument weakens from 2027 and is contested by 2029.</p>
           <h4>Sources</h4>
           <ul class="srcs">
-            <li>Vantor / Business Wire — Rebrand and Tensorglobe launch <span class="d">· 1 Oct 2025</span></li>
-            <li>SpaceNews — Maxar retires its name, rebrands as Vantor and Lanteris</li>
-            <li>SpaceNews — Vantor partners with Google AI for classified environments <span class="d">· Feb 2026</span></li>
-            <li>Business Wire — Vantor constellation expansion: Vantage and Pulse <span class="d">· 9 Apr 2026</span></li>
-            <li>Wikipedia / Vantor — WorldView constellation ownership and fleet composition</li>
+    <li><a href="https://www.businesswire.com/news/home/20251001760322/en/Vantor-Rebrands-from-Maxar-Intelligence-Unveils-AI-Powered-Platform" target="_blank" rel="noopener">Business Wire — Vantor rebrands from Maxar Intelligence, unveils AI-powered platform</a> <span class="d">· 1 Oct 2025</span></li>
+    <li><a href="https://spacenews.com/maxar-retires-its-name-rebrands-as-vantor-and-lanteris/" target="_blank" rel="noopener">SpaceNews — Maxar retires its name, rebrands as Vantor and Lanteris</a> <span class="d">· Oct 2025</span></li>
+    <li><a href="https://spacenews.com/vantor-partners-with-google-ai-to-automate-intelligence-reports-for-government-agencies/" target="_blank" rel="noopener">SpaceNews — Vantor partners with Google AI to automate intelligence reports for government agencies</a> <span class="d">· Feb 2026</span></li>
+    <li><a href="https://www.businesswire.com/news/home/20260409236350/en/Vantor-Introduces-First-of-a-Kind-Expansion-of-Its-Satellite-Constellation-Combining-High-Resolution-Imaging-and-Real-Time-Global-Monitoring" target="_blank" rel="noopener">Business Wire — Vantor introduces first-of-a-kind expansion of its satellite constellation</a> <span class="d">· 9 Apr 2026</span></li>
+    <li><a href="https://vantor.com/product/platform/" target="_blank" rel="noopener">Vantor — Tensorglobe platform (Cortex / Forge / Nexus)</a> <span class="d">· current</span></li>
+    <li><a href="https://en.wikipedia.org/wiki/Vantor_(company)" target="_blank" rel="noopener">Wikipedia — Vantor (company): fleet ownership and composition</a> <span class="d">· current</span></li>
           </ul>
         </div>
       </details>
     </article>
 
-    <!-- FREE PUBLIC DATA -->
     <article class="entry">
       <div class="entry-top">
         <span class="rank">03</span>
         <h3 class="name">Free public data</h3>
-        <span class="tag">Structural</span>
-        <span class="tag">Not a company</span>
+        <span class="tag">Structural</span><span class="tag">Not a company</span>
       </div>
       <p class="sowhat">The free tier used to be pixels. It is now pixels plus a foundation model. Every year, more of the low end of our market stops being a market.</p>
 
@@ -389,30 +391,28 @@
       <details>
         <summary>Detail &amp; sources</summary>
         <div class="detail">
-          <h4>Why this belongs on a battlecard at all</h4>
-          <p>No competitor has a larger installed base. For a great many commercial use cases, “good enough and free” beats “better and paid” — and the gap narrowed sharply in 2025 when the free tier gained an analysis-ready embedding layer. Sales teams lose these deals without ever seeing a competitor's name on the evaluation.</p>
-          <h4>The honest version</h4>
-          <p>Conceding this ground fast is the stronger play. A rep who volunteers “Sentinel is genuinely fine for that” earns the right to be believed on the cases where it isn't. Fighting free data on annual land cover is a losing argument that also costs credibility.</p>
-          <h4>Worth watching</h4>
-          <p>Landsat Next restructuring is a live variable in both directions: any degradation in continuity of free data would expand the commercial market, and a scientific advisory panel has publicly urged the Interior Department to keep Landsat data free. Track it; don't build a deck around it yet.</p>
+      <h4>Why this belongs on a battlecard at all</h4>
+      <p>No competitor has a larger installed base. For a great many commercial use cases, “good enough and free” beats “better and paid” — and the gap narrowed sharply in 2025 when the free tier gained an analysis-ready embedding layer. Sales teams lose these deals without ever seeing a competitor's name on the evaluation.</p>
+      <h4>The honest version</h4>
+      <p>Conceding this ground fast is the stronger play. A rep who volunteers “Sentinel is genuinely fine for that” earns the right to be believed on the cases where it isn't. Fighting free data on annual land cover is a losing argument that also costs credibility.</p>
+      <h4>Worth watching</h4>
+      <p>Landsat Next restructuring is a live variable in both directions: any degradation in continuity of free data would expand the commercial market, and a scientific advisory panel has publicly urged the Interior Department to keep Landsat data free. Track it; don't build a deck around it yet.</p>
           <h4>Sources</h4>
           <ul class="srcs">
-            <li>USGS — Landsat Next mission page and FY2026 budget restructuring</li>
-            <li>Science / AAAS — Keep Landsat data free, panel urges Interior Dept.</li>
-            <li>Copernicus Data Space — Landsat 8/9 available in Copernicus Browser <span class="d">· Jan 2026</span></li>
-            <li>Source Cooperative — Clay Sentinel-2 embeddings, published openly</li>
+    <li><a href="https://www.usgs.gov/landsat-missions/landsat-next" target="_blank" rel="noopener">USGS — Landsat Next mission page (FY2026 budget restructuring)</a> <span class="d">· current</span></li>
+    <li><a href="https://www.science.org/content/article/keep-landsat-data-free-panel-urges-interior-department" target="_blank" rel="noopener">Science / AAAS — Keep Landsat data free, panel urges Department of the Interior</a> <span class="d">· 2025</span></li>
+    <li><a href="https://dataspace.copernicus.eu/news/2026-1-12-landsat-8-and-9-data-available-copernicus-browser" target="_blank" rel="noopener">Copernicus Data Space — Landsat 8 and 9 data available in Copernicus Browser</a> <span class="d">· 12 Jan 2026</span></li>
+    <li><span class="nolink">Source Cooperative — Clay Sentinel-2 embeddings, published openly (referenced via LGND/Clay announcements)</span> <span class="d">· 2025</span></li>
           </ul>
         </div>
       </details>
     </article>
 
-    <!-- ESRI -->
     <article class="entry">
       <div class="entry-top">
         <span class="rank">04</span>
         <h3 class="name">Esri</h3>
-        <span class="tag">Platform</span>
-        <span class="tag">Partnership</span>
+        <span class="tag">Platform</span><span class="tag">Partnership</span>
       </div>
       <p class="sowhat">Esri isn't trying to win the model race — it's hosting it. Whoever's model wins, the analyst still opens ArcGIS.</p>
 
@@ -429,27 +429,25 @@
       <details>
         <summary>Detail &amp; sources</summary>
         <div class="detail">
-          <h4>The threat is distribution, not capability</h4>
-          <p>Esri's model-agnosticism is the strategy, not a hedge. By hosting every foundation model — including open ones like Clay — it makes the choice of model an implementation detail inside a workflow it owns. Model differentiation becomes a dropdown. Workflow lock-in doesn't.</p>
-          <h4>Where this cuts against us</h4>
-          <p>If ArcGIS becomes the default surface for geospatial AI, imagery providers are commodity inputs selected on price and freshness. Freshness is defensible; price is not. This is the clearest live example of the value-migration risk in section 03.</p>
+      <h4>The threat is distribution, not capability</h4>
+      <p>Esri's model-agnosticism is the strategy, not a hedge. By hosting every foundation model — including open ones like Clay — it makes the choice of model an implementation detail inside a workflow it owns. Model differentiation becomes a dropdown. Workflow lock-in doesn't.</p>
+      <h4>Where this cuts against us</h4>
+      <p>If ArcGIS becomes the default surface for geospatial AI, imagery providers are commodity inputs selected on price and freshness. Freshness is defensible; price is not. This is the clearest live example of the value-migration risk in section 03.</p>
           <h4>Sources</h4>
           <ul class="srcs">
-            <li>Esri ArcNews — GeoAI in the Age of Foundation Models <span class="d">· Spring 2026</span></li>
-            <li>Esri blog — What's new in AI tools and models in ArcGIS <span class="d">· Q2 2026</span></li>
-            <li>GIM International — Esri partners with AWS to advance GenAI in geospatial solutions</li>
+    <li><a href="https://www.esri.com/about/newsroom/arcnews/geoai-in-the-age-of-foundation-models" target="_blank" rel="noopener">Esri ArcNews — GeoAI in the Age of Foundation Models</a> <span class="d">· Spring 2026</span></li>
+    <li><a href="https://www.esri.com/arcgis-blog/products/arcgis/geoai/whats-new-in-ai-tools-and-models-in-arcgis-q2-2026" target="_blank" rel="noopener">Esri blog — What's new in AI tools and models in ArcGIS (Q2 2026)</a> <span class="d">· Q2 2026</span></li>
+    <li><a href="https://www.gim-international.com/content/news/esri-partners-with-aws-to-advance-genai-integration-in-geospatial-solutions" target="_blank" rel="noopener">GIM International — Esri partners with AWS to advance GenAI integration in geospatial solutions</a> <span class="d">· 2026</span></li>
           </ul>
         </div>
       </details>
     </article>
 
-    <!-- LGND -->
     <article class="entry">
       <div class="entry-top">
         <span class="rank">05</span>
         <h3 class="name">LGND</h3>
-        <span class="tag">Funding</span>
-        <span class="tag">Partnership</span>
+        <span class="tag">Funding</span><span class="tag">Partnership</span>
       </div>
       <p class="sowhat">LGND is not the threat. The fact that $9M now buys a credible geospatial AI product is the threat.</p>
 
@@ -466,24 +464,20 @@
       <details>
         <summary>Detail &amp; sources</summary>
         <div class="detail">
-          <h4>Read the funding number as a cost curve, not a competitor</h4>
-          <p>$9M would not have bought a working geospatial AI product three years ago. It does now, because the substrate — imagery, embeddings, compute — is free or near-free. Expect more entrants at this size, and expect them to compete on interface quality, because that's the only layer left to build.</p>
-          <h4>Where this cuts against us</h4>
-          <p>Thin-layer companies move faster on UX than a satellite operator can, and they'll set customer expectations for what a geospatial interface feels like. Planet doesn't need to win that race — it needs to not lose the customer relationship to whoever does.</p>
+      <h4>Read the funding number as a cost curve, not a competitor</h4>
+      <p>$9M would not have bought a working geospatial AI product three years ago. It does now, because the substrate — imagery, embeddings, compute — is free or near-free. Expect more entrants at this size, and expect them to compete on interface quality, because that's the only layer left to build.</p>
+      <h4>Where this cuts against us</h4>
+      <p>Thin-layer companies move faster on UX than a satellite operator can, and they'll set customer expectations for what a geospatial interface feels like. Planet doesn't need to win that race — it needs to not lose the customer relationship to whoever does.</p>
           <h4>Sources</h4>
           <ul class="srcs">
-            <li>TechCrunch — LGND wants to make ChatGPT for the Earth <span class="d">· 10 Jul 2025</span></li>
-            <li>Everywhere Ventures — LGND raises $9M seed</li>
-            <li>Source Cooperative / Clay — open embeddings alongside AlphaEarth</li>
+    <li><a href="https://techcrunch.com/2025/07/10/lgnd-wants-to-make-chatgpt-for-the-earth/" target="_blank" rel="noopener">TechCrunch — Exclusive: LGND wants to make ChatGPT for the Earth</a> <span class="d">· 10 Jul 2025</span></li>
+    <li><a href="https://ideas.everywhere.vc/p/lgnd-raises-9m-to-build-the-chatgpt" target="_blank" rel="noopener">Everywhere Ventures — LGND raises $9M to build the “ChatGPT for the Earth”</a> <span class="d">· Jul 2025</span></li>
           </ul>
         </div>
       </details>
     </article>
-
-    <!--ENTRIES:END-->
   </section>
 
-  <!-- ============ 03 ============ -->
   <section>
     <div class="sec-head">
       <span class="sec-num">03</span>
@@ -519,59 +513,68 @@
       <span class="label">The risk, stated plainly</span>
       <p>If models commoditise and interfaces consolidate, value migrates up the stack and Planet becomes a capital-intensive data supplier feeding somebody else's product. Owning satellites is the moat and the exposure at once: it's the thing Google and LGND structurally cannot replicate, and it's the reason the cost base can't be cut when pricing pressure arrives. Every trajectory above is a variation on the same question — does Planet own the customer relationship, or the pixels underneath somebody else's?</p>
     </div>
+
+    <details>
+      <summary>Planet claims used above — sources</summary>
+      <div class="detail">
+        <h4>Sources</h4>
+        <ul class="srcs">
+    <li><a href="https://www.businesswire.com/news/home/20260319782110/en/Planet-Reports-Financial-Results-for-Fourth-Quarter-and-Full-Fiscal-Year-2026" target="_blank" rel="noopener">Planet — FY2026 results: revenue $307.7M, backlog $900M, first profitable year</a> <span class="d">· 19 Mar 2026</span></li>
+    <li><a href="https://www.businesswire.com/news/home/20240610385569/en/Planet-Labs-PBC-Announces-Real-Time-Insights-Technology-Using-NVIDIA-Jetson-Platform" target="_blank" rel="noopener">Planet — Real-Time Insights technology using the NVIDIA Jetson platform</a> <span class="d">· 10 Jun 2024</span></li>
+    <li><a href="https://www.planet.com/products/satellite-monitoring/" target="_blank" rel="noopener">Planet — Monitoring product page (near-daily PlanetScope, archive depth)</a> <span class="d">· current</span></li>
+    <li><a href="https://www.planet.com/products/high-resolution-satellite-imagery/" target="_blank" rel="noopener">Planet — Tasking product page (tip-and-cue from monitoring to high-resolution)</a> <span class="d">· current</span></li>
+        </ul>
+      </div>
+    </details>
   </section>
 
-  <!-- ============ 04 ============ -->
   <section>
     <div class="sec-head">
       <span class="sec-num">04</span>
       <h2>Configuration</h2>
     </div>
     <p class="lede">The whole thing. Not a screenshot of a settings page — the actual file the agent reads.</p>
+<pre># digest.config.yaml
+cadence:  weekly            # drafted Mon 06:00 PT
+output:   single_page_html
+review:   required          # no auto-publish. a human approves every issue.
 
-<pre><span class="c"># digest.config.yaml</span>
-<span class="k">cadence:</span>  weekly            <span class="c"># drafted Mon 06:00 PT</span>
-<span class="k">output:</span>   single_page_html
-<span class="k">review:</span>   required          <span class="c"># no auto-publish. a human approves every issue.</span>
+competitors:
+  - google        # Earth AI, AlphaEarth, Gemini geospatial reasoning
+  - vantor        # Tensorglobe, WorldView, Vantage/Pulse
+  - public_data   # Sentinel-2, Landsat — a force, not a company
+  - esri          # distribution incumbent
+  - lgnd          # Clay lineage, seed stage
+  # - iceye       # candidates, not yet enabled
+  # - satellogic
+  # - umbra
 
-<span class="k">competitors:</span>
-  - google        <span class="c"># Earth AI, AlphaEarth, Gemini geospatial reasoning</span>
-  - vantor        <span class="c"># Tensorglobe, WorldView, Vantage/Pulse</span>
-  - public_data   <span class="c"># Sentinel-2, Landsat — a force, not a company</span>
-  - esri          <span class="c"># distribution incumbent</span>
-  - lgnd          <span class="c"># Clay lineage, seed stage</span>
-  <span class="c"># - iceye       # candidates, not yet enabled</span>
-  <span class="c"># - satellogic</span>
-  <span class="c"># - umbra</span>
-
-<span class="k">sources:</span>
+sources:
   sam_gov:        { cadence: daily,     naics: [541370, 541715] }
   usaspending:    { cadence: monthly,   recipients: all }
-  arxiv:          { cadence: weekly,    query: "remote sensing foundation model" }
+  arxiv:          { cadence: weekly,    query: &quot;remote sensing foundation model&quot; }
   huggingface:    { cadence: weekly,    watch: [org_releases, model_cards] }
   earnings:       { cadence: quarterly, tickers: [PL, GOOGL], transcripts: true }
   press_releases: { cadence: daily,     feeds: [vantor.com, blog.google, esri.com] }
   api_changelogs: { cadence: weekly,    urls: [developers.google.com/earth-engine] }
-  conferences:    { cadence: event,     watch: [GEOINT, GTC, "Esri UC"] }
-  funding:        { cadence: weekly,    filter: "earth observation, seed..series_c" }
+  conferences:    { cadence: event,     watch: [GEOINT, GTC, &quot;Esri UC&quot;] }
+  funding:        { cadence: weekly,    filter: &quot;earth observation, seed..series_c&quot; }
 
-<span class="c"># deliberately not watched:</span>
-<span class="c">#   g2, capterra, trustradius  -> no listings exist for these companies</span>
-<span class="c">#   meta / google ad libraries -> no consumer ad spend in this market</span>
-<span class="c">#   app store reviews          -> no consumer apps</span></pre>
-
+# deliberately not watched:
+#   g2, capterra, trustradius  -&gt; no listings exist for these companies
+#   meta / google ad libraries -&gt; no consumer ad spend in this market
+#   app store reviews          -&gt; no consumer apps</pre>
     <p class="caption">Adding Esri was one line. Dropping LGND is one line. That's the point — the competitive set should be cheap enough to argue about weekly.</p>
   </section>
 
   <footer>
     <h5>Method</h5>
     <p>An agent queries the sources in the config block, clusters what changed, and drafts one entry per competitor in signal / so-what / action form. A person reviews and edits every entry before anything publishes. The agent proposes; it does not decide. Script and README accompany this page.</p>
-
     <h5>Sourcing</h5>
-    <p>Every claim here is drawn from public announcements, published research, government budget documents, or company filings, each dated in the expanded detail of its entry. Nothing is inferred from private conversation, and no non-public Planet information appears anywhere on this page.</p>
-
+    <p>Every claim here is drawn from public announcements, published research, government budget documents, or company filings — each linked and dated in the expanded detail of its entry. Nothing is inferred from private conversation, and no non-public Planet information appears anywhere on this page.</p>
     <h5>Limitations</h5>
     <p>One issue, five competitors, one output format. Forward-looking statements about Vantor's constellation are that company's public schedule, not a forecast. The trajectory section is argued interpretation, not sourced fact, and is labelled as such. Contract-award coverage is limited to unclassified filings — the classified portion of this market is, by construction, invisible to any workflow like this one.</p>
+    <p class="verified">Sources last verified 29 July 2026 · built from digest.json</p>
   </footer>
 
 </main>

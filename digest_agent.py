@@ -239,45 +239,40 @@ def review(entries: list) -> list:
 
 
 # --------------------------------------------------------------------------
-# 5. Render. Entries spliced into the page between marker comments, so the
-#    design and the pipeline stay in one file and never drift apart.
+# 5. Write. The agent's output is data, not markup — it updates the `entries`
+#    array in digest.json and leaves every other section of the issue alone.
+#    `python build.py` turns that into the page. Keeping the agent out of the
+#    HTML means a human can edit any wording afterwards without re-running it.
 # --------------------------------------------------------------------------
 
-def _splice(html: str, start: str, end: str, replacement: str) -> str:
-    """Replace everything between two marker comments, markers included."""
-    i, j = html.index(start), html.index(end) + len(end)
-    return html[:i] + start + "\n" + replacement + "\n" + end + html[j:]
+def write_data(entries: list, data_path: str = "digest.json"):
+    """Merge approved entries into digest.json, preserving hand-written sections."""
+    with open(data_path) as f:
+        data = json.load(f)
 
+    data["entries"] = [
+        {"competitor": e.competitor,
+         "tags": [e.source_type.title()],
+         "so_what": e.so_what,
+         "signal": e.signal,
+         "action": e.action,
+         "detail": [],          # written by a human during review, not drafted
+         "sources": e.sources}
+        for e in entries
+    ]
+    data["issue"]["date"] = date.today().strftime("%d %B %Y")
+    data["issue"]["verified"] = date.today().strftime("%d %B %Y")
 
-def render(entries: list, out_path: str, template_path: str = "index.html"):
-    with open(template_path) as f:
-        template = f.read()
-
-    blocks = "\n".join(
-        f'<article class="entry">\n'
-        f'  <div class="entry-top"><span class="rank">{i:02d}</span>'
-        f'<h3 class="name">{e.competitor}</h3>'
-        f'<span class="tag">{e.source_type}</span></div>\n'
-        f'  <p class="sowhat">{e.so_what}</p>\n'
-        f'  <div class="field"><span class="label">Signal</span>'
-        f'<p class="signal">{e.signal}</p></div>\n'
-        f'  <div class="action"><span class="label">Battlecard line</span>'
-        f'<p>{e.action}</p></div>\n'
-        f'</article>'
-        for i, e in enumerate(entries, 1))
-
-    html = _splice(template, "<!--ENTRIES:START-->", "<!--ENTRIES:END-->", blocks)
-    html = _splice(html, "<!--DATE:START-->", "<!--DATE:END-->",
-                   date.today().strftime("%d %B %Y"))
-    with open(out_path, "w") as f:
-        f.write(html)
-    print(f"Wrote {out_path}", file=sys.stderr)
+    with open(data_path, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print(f"Wrote {data_path} — now run: python build.py", file=sys.stderr)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="digest.config.yaml")
-    ap.add_argument("--out", default="index.html")
+    ap.add_argument("--out", default="digest.json")
     ap.add_argument("--dry-run", action="store_true",
                     help="collect and draft, print JSON, write nothing")
     args = ap.parse_args()
@@ -300,7 +295,7 @@ def main():
         entries = review(entries)
 
     if entries:
-        render(entries, args.out)
+        write_data(entries, args.out)
 
 
 if __name__ == "__main__":
