@@ -183,6 +183,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true",
                     help="verify index.html matches digest.json; exit 1 if stale")
+    ap.add_argument("--artifact", action="store_true",
+                    help="also emit artifact.html — same page, body-only, for hosts "
+                         "that supply their own document wrapper")
     args = ap.parse_args()
 
     data = json.load(open(DATA))
@@ -206,6 +209,16 @@ def main():
                    if safe_url(s.get("url")))
     print(f"Wrote {OUT} — {len(data['entries'])} entries, "
           f"{n_linked}/{n_src} sources linked.")
+
+    if args.artifact:
+        # Same page, minus the document wrapper — <style> plus <main>, nothing
+        # else. Hosts that inject their own <!doctype>/<head>/<body> would
+        # otherwise nest a second document inside the first.
+        style = page[page.index("<style>"):page.index("</style>") + len("</style>")]
+        body = page[page.index('<main class="wrap">'):
+                    page.index("</main>") + len("</main>")]
+        open("artifact.html", "w").write(style + "\n" + body + "\n")
+        print("Wrote artifact.html — body-only variant, same content.")
 
 
 if __name__ == "__main__":
