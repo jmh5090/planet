@@ -123,21 +123,157 @@ def ingest(config: dict) -> list[dict]:
 
 
 # --------------------------------------------------------------------------
+# 2. Analyze. One batched Claude call for the whole list, structured JSON back.
+#    This is the judgment: two hard filters drop anything that fails, and three
+#    scores rank what survives. The system prompt is where that judgment lives.
+# --------------------------------------------------------------------------
+
+SYSTEM = """You are a content strategist for Planet Labs' Queryable Earth — an \
+agentic AI that answers natural-language questions from a decade of near-daily \
+global satellite imagery.
+
+You are given a batch of recent news stories. For each story, decide whether it \
+could become a compelling "post candidate": a story where a person who has never \
+touched GIS software would ask a question that Queryable Earth can answer from \
+orbit, and the answer would make a shareable LinkedIn post. A human will later \
+type the top prompts into the beta by hand.
+
+Apply TWO HARD FILTERS first. Drop any story that fails either one — do not \
+soften a borderline story to keep it; when in doubt, drop it.
+
+1. SATELLITE-VISIBILITY. Keep only changes physically observable from orbit at \
+   roughly 3-metre resolution over days-to-years: construction and industrial \
+   buildout, deforestation, water and reservoir levels, flooding, burn scars, \
+   ports and shipping, mining, solar/energy buildout, crop change, storage-tank \
+   levels, and the like. REJECT anything whose substance is policy, prices, \
+   earnings, court rulings, sentiment, indoor or personal activity, or detail \
+   finer than a few metres.
+
+2. SAFE-LANE. REJECT active-conflict, military, troop-movement, and \
+   OSINT-sensitive topics. Planet has defense customers and freelancing on these \
+   publicly is off-limits. Favour economic, environmental, civic, and commercial \
+   stories.
+
+Then SCORE every surviving story from 1 to 10 on each axis:
+
+- longitudinal_moat — how much the answer DEPENDS on frequent, longitudinal \
+  imagery rather than a single snapshot. THIS IS THE PRIMARY RANKING KEY. \
+  Planet's moat is a decade of near-daily global imagery; a competitor can also \
+  run a single natural-language query against one image, so a story answerable \
+  from ONE image must score LOW. Reward rate-of-change, recovery trajectories, \
+  and progression over time.
+- virality — how shareable the resulting post would be on LinkedIn.
+- confidence — how confident you are that the beta can actually answer the \
+  prompt from imagery.
+
+Return ONLY a JSON array — no prose, no markdown, no code fences. Each element \
+is one surviving story with exactly these fields:
+
+  headline               (carry through from the story's title)
+  source                 (carry through from the story)
+  url                    (carry through from the story)
+  visibility_reason      (one sentence: what is observable from orbit and why)
+  persona                (the new, non-GIS buyer who would care)
+  why_they_care          (one sentence, in the persona's terms)
+  business_question      (the question in the persona's own words)
+  queryable_earth_prompt (a natural-language prompt, ready to paste into the beta)
+  linkedin_hook          (<= 140 characters)
+  longitudinal_moat      (integer 1-10)
+  virality               (integer 1-10)
+  confidence             (integer 1-10)
+
+If no story survives the filters, return an empty array: []"""
+
+
+def _extract_json(text: str) -> list[dict]:
+    """Pull the JSON array out of the model's reply, tolerating stray prose or
+    code fences. We prompt for a bare array but never trust that we got one."""
+    text = text.strip()
+    if text.startswith("```"):
+        # Strip a leading ```json / ``` fence and the trailing fence.
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[len("json"):]
+    start, end = text.find("["), text.rfind("]")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("no JSON array found in model response")
+    return json.loads(text[start:end + 1])
+
+
+def analyze(client, items: list[dict], config: dict) -> list[dict]:
+    """One batched call. Returns the passing candidates (unranked)."""
+    if not items:
+        return []
+
+    model = config.get("model", MODEL)
+    response = client.messages.create(
+        model=model,
+        max_tokens=8000,
+        system=SYSTEM,
+        messages=[{"role": "user", "content":
+                   "Recent news stories:\n" + json.dumps(items, indent=2, ensure_ascii=False)}],
+    )
+    text = next(b.text for b in response.content if b.type == "text")
+    return _extract_json(text)
+
+
+# --------------------------------------------------------------------------
+# 3. Rank. longitudinal_moat first — that is Planet's moat — then virality plus
+#    confidence as the tie-break.
+# --------------------------------------------------------------------------
+
+def _score(candidate: dict, key: str) -> int:
+    try:
+        return int(candidate.get(key, 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def rank(candidates: list[dict]) -> list[dict]:
+    return sorted(
+        candidates,
+        key=lambda c: (_score(c, "longitudinal_moat"),
+                       _score(c, "virality") + _score(c, "confidence")),
+        reverse=True,
+    )
+
+
+# --------------------------------------------------------------------------
 # CLI.
 # --------------------------------------------------------------------------
 
-def cmd_run(args, config: dict):
+def pipeline(config: dict) -> list[dict]:
+    """The real pipeline the live demo runs: ingest -> analyze -> rank."""
+    try:
+        import anthropic
+    except ImportError:
+        print("anthropic is required: pip install anthropic", file=sys.stderr)
+        sys.exit(1)
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("ANTHROPIC_API_KEY is not set.", file=sys.stderr)
+        sys.exit(1)
+
     print("Ingesting…", file=sys.stderr)
     items = ingest(config)
     print(f"{len(items)} items after de-dupe.", file=sys.stderr)
 
+    print("Analyzing…", file=sys.stderr)
+    client = anthropic.Anthropic()          # reads ANTHROPIC_API_KEY
+    candidates = rank(analyze(client, items, config))
+    print(f"{len(candidates)} candidates passed the filters.", file=sys.stderr)
+    return candidates
+
+
+def cmd_run(args, config: dict):
+    candidates = pipeline(config)
+
     if args.dry_run:
-        print(json.dumps(items, indent=2, ensure_ascii=False))
+        print(json.dumps(candidates, indent=2, ensure_ascii=False))
         return
 
-    # Analysis and delivery are wired in later stages.
-    print("Ingest complete. Analysis and delivery not yet wired up — "
-          "use --dry-run to inspect ingested items.", file=sys.stderr)
+    # Delivery is wired in the next stage.
+    print("Analysis complete. Delivery not yet wired up — "
+          "use --dry-run to inspect ranked candidates.", file=sys.stderr)
 
 
 def main():
