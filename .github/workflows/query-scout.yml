@@ -1,0 +1,28 @@
+name: Query Scout
+
+on:
+  # Click "Run workflow" in the Actions tab to run it on demand — the button
+  # this is really for. Good for a live demo: click it, wait under a minute,
+  # check Slack.
+  workflow_dispatch: {}
+  # Also runs on its own, weekday mornings — ~8am Pacific / 11am Eastern
+  # (UTC offset drifts an hour with daylight saving; close enough for a demo).
+  schedule:
+    - cron: '0 15 * * 1-5'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install anthropic feedparser
+
+      - run: python query_scout.py run --notify slack
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

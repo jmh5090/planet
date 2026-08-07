@@ -1,0 +1,18 @@
+{
+  "source": "rss",
+  "feeds": [
+    "https://earthobservatory.nasa.gov/feeds/earth-observatory.rss",
+    "https://news.mongabay.com/feed/",
+    "https://www.theguardian.com/environment/rss",
+    "http://feeds.bbci.co.uk/news/business/rss.xml",
+    "http://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+  ],
+  "max_items": 40,
+  "model": "claude-sonnet-4-6",
+  "notify": "html",
+  "top_n": 8,
+  "output_dir": "out",
+  "lookback_days": 1,
+  "week_lookback_days": 7,
+  "min_candidates": 3
+}
