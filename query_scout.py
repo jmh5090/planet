@@ -193,6 +193,18 @@ Then SCORE every surviving story from 1 to 10 on each axis:
 - confidence — how confident you are that the beta can actually answer the \
   prompt from imagery.
 
+For every surviving story, also work out how this persona would try to answer \
+this question TODAY, without Queryable Earth — a contracted geospatial or \
+remote-sensing analyst, a specialist SaaS tool, a site visit, a quarterly \
+filing, or simply not measuring it at all — and be HONEST about whether that \
+existing option is actually good enough for them. If sophisticated players in \
+this space already have real geospatial access, say so plainly rather than \
+inventing a gap that isn't there; do not manufacture urgency. The real pitch \
+for the agentic beta is usually that it makes the same kind of answer \
+available in plain English, in minutes, self-serve, with no analyst and no \
+GIS license — to someone who currently has no practical access to it, or has \
+to wait weeks and pay a consultancy for it. Say which of those it is.
+
 Return ONLY a JSON array — no prose, no markdown, no code fences. Each element \
 is one surviving story with exactly these fields:
 
@@ -202,6 +214,12 @@ is one surviving story with exactly these fields:
   visibility_reason      (one sentence: what is observable from orbit and why)
   persona                (the new, non-GIS buyer who would care)
   why_they_care          (one sentence, in the persona's terms)
+  status_quo_gap         (1-2 sentences: how this persona tries to answer this
+                          today, and honestly, why that's not good enough for
+                          them specifically — too slow, too expensive, needs an
+                          analyst or GIS license they don't have, or doesn't
+                          exist at this level of specificity. If a good
+                          existing option already covers this, say so.)
   business_question      (the question in the persona's own words)
   queryable_earth_prompt (a natural-language prompt, ready to paste into the beta)
   linkedin_hook          (<= 140 characters)
@@ -304,6 +322,7 @@ def _notify_console(candidates: list[dict], config: dict, window_days: float):
         if c.get("url"):
             print(f"      {c['url']}")
         for label, key in (("persona", "persona"), ("why", "why_they_care"),
+                           ("status quo", "status_quo_gap"),
                            ("question", "business_question"),
                            ("visibility", "visibility_reason"),
                            ("hook", "linkedin_hook")):
@@ -342,6 +361,7 @@ def render_html(candidates: list[dict], config: dict, window_days: float) -> str
         <dl>
           <dt>Persona</dt><dd>{e(c.get('persona'))}</dd>
           <dt>Why they care</dt><dd>{e(c.get('why_they_care'))}</dd>
+          <dt>Status quo today</dt><dd>{e(c.get('status_quo_gap'))}</dd>
           <dt>Business question</dt><dd>{e(c.get('business_question'))}</dd>
           <dt>Visible from orbit</dt><dd>{e(c.get('visibility_reason'))}</dd>
         </dl>
@@ -426,6 +446,8 @@ def _notify_slack(candidates: list[dict], config: dict, window_days: float):
         lines.append(
             f"*{i}. {c.get('headline', '')}*  _(moat {c.get('longitudinal_moat')}, "
             f"virality {c.get('virality')}, confidence {c.get('confidence')})_\n"
+            f"Persona: {c.get('persona', '')}\n"
+            f"Today: {c.get('status_quo_gap', '')}\n"
             f"▸ {c.get('queryable_earth_prompt', '')}")
     payload = json.dumps({"text": "\n\n".join(lines)}).encode()
 
