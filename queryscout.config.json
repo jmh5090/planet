@@ -11,5 +11,8 @@
   "model": "claude-sonnet-4-6",
   "notify": "html",
   "top_n": 8,
-  "output_dir": "out"
+  "output_dir": "out",
+  "lookback_days": 1,
+  "week_lookback_days": 7,
+  "min_candidates": 3
 }

@@ -24,10 +24,12 @@ Usage:
 """
 
 import argparse
+import calendar
 import html
 import json
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -57,9 +59,22 @@ def load_config(path: str = CONFIG_PATH) -> dict:
 #    stable shape — {title, source, url, summary}. No interpretation here, that
 #    is the model's job. Adding NewsAPI or GDELT means adding one function to
 #    SOURCES and naming it in the config; nothing downstream changes.
+#
+#    Every source also takes lookback_days, the window pipeline() is currently
+#    trying — a plain daily run, or the widened weekly retry on a slow day. A
+#    story with no parseable date is kept regardless of window rather than
+#    dropped, since we can't judge its age.
 # --------------------------------------------------------------------------
 
-def _rss(config: dict) -> list[dict]:
+def _within_window(entry: dict, lookback_days: float) -> bool:
+    parsed = entry.get("published_parsed") or entry.get("updated_parsed")
+    if not parsed:
+        return True
+    age_seconds = time.time() - calendar.timegm(parsed)  # feedparser normalizes to UTC
+    return age_seconds <= lookback_days * 86400
+
+
+def _rss(config: dict, lookback_days: float) -> list[dict]:
     """Poll the RSS feeds named in config. Default source."""
     try:
         import feedparser
@@ -75,7 +90,11 @@ def _rss(config: dict) -> list[dict]:
         if parsed.bozo and not parsed.entries:
             print(f"  ! {url}: {parsed.bozo_exception}", file=sys.stderr)
             continue
+        kept = 0
         for entry in parsed.entries:
+            if not _within_window(entry, lookback_days):
+                continue
+            kept += 1
             items.append({
                 "title": entry.get("title", "").strip(),
                 "source": source,
@@ -83,35 +102,40 @@ def _rss(config: dict) -> list[dict]:
                 # feedparser exposes the blurb as .summary; some feeds omit it.
                 "summary": entry.get("summary", "").strip(),
             })
-        print(f"  · {source}: {len(parsed.entries)} items", file=sys.stderr)
+        print(f"  · {source}: {kept}/{len(parsed.entries)} items within "
+              f"{lookback_days:g} day(s)", file=sys.stderr)
     return items
 
 
-def _newsapi(config: dict) -> list[dict]:
+def _newsapi(config: dict, lookback_days: float) -> list[dict]:
     """Placeholder — newsapi.org/v2/everything. Would read an API key and query
-    from config and return the same {title, source, url, summary} shape. Wiring
-    it up is the only change needed to swap sources."""
+    from config, filter by `from`/`to` matching lookback_days, and return the
+    same {title, source, url, summary} shape. Wiring it up is the only change
+    needed to swap sources."""
     raise NotImplementedError("newsapi source not wired up — see docstring")
 
 
-def _gdelt(config: dict) -> list[dict]:
-    """Placeholder — api.gdeltproject.org/api/v2/doc/doc. Same output contract as
-    _rss; GDELT's DOC API needs no key and is good for global event coverage."""
+def _gdelt(config: dict, lookback_days: float) -> list[dict]:
+    """Placeholder — api.gdeltproject.org/api/v2/doc/doc, using its `timespan`
+    parameter for lookback_days. Same output contract as _rss; GDELT's DOC API
+    needs no key and is good for global event coverage."""
     raise NotImplementedError("gdelt source not wired up — see docstring")
 
 
 SOURCES = {"rss": _rss, "newsapi": _newsapi, "gdelt": _gdelt}
 
 
-def ingest(config: dict) -> list[dict]:
+def ingest(config: dict, lookback_days: float | None = None) -> list[dict]:
     """Fan out to the configured source, de-dupe by URL, cap at max_items."""
     source_name = config.get("source", "rss")
     if source_name not in SOURCES:
         print(f"Unknown source '{source_name}'. Options: {', '.join(SOURCES)}",
               file=sys.stderr)
         sys.exit(1)
+    if lookback_days is None:
+        lookback_days = config.get("lookback_days", 1)
 
-    raw = SOURCES[source_name](config)
+    raw = SOURCES[source_name](config, lookback_days)
 
     seen, items = set(), []
     for item in raw:
@@ -250,7 +274,7 @@ def rank(candidates: list[dict]) -> list[dict]:
 
 @dataclass
 class Notifier:
-    deliver: object                 # callable(candidates, config) -> None
+    deliver: object                 # callable(candidates, config, window_days) -> None
     env: list = field(default_factory=list)   # required environment variables
 
 
@@ -260,8 +284,15 @@ def _fmt_scores(c: dict) -> str:
             f"confidence {c.get('confidence')}")
 
 
-def _notify_console(candidates: list[dict], config: dict):
+def _window_label(config: dict, window_days: float) -> str:
+    """'Daily' unless the slow-day fallback widened the lookback window."""
+    return "Weekly" if window_days > config.get("lookback_days", 1) else "Daily"
+
+
+def _notify_console(candidates: list[dict], config: dict, window_days: float):
     """Human-readable digest to stdout. Needs no credentials."""
+    label = _window_label(config, window_days)
+    print(f"Queryable Earth — {label.lower()} digest (last {window_days:g} day(s))")
     if not candidates:
         print("No candidates passed the filters.")
         return
@@ -283,9 +314,10 @@ def _notify_console(candidates: list[dict], config: dict):
     print()
 
 
-def render_html(candidates: list[dict], config: dict) -> str:
+def render_html(candidates: list[dict], config: dict, window_days: float) -> str:
     """Self-contained HTML report — one ranked card per candidate. Every field
     is model- or feed-sourced, so everything is escaped."""
+    label = _window_label(config, window_days)
     def e(v):
         return html.escape(str(v if v is not None else ""))
 
@@ -325,7 +357,7 @@ def render_html(candidates: list[dict], config: dict) -> str:
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Queryable Earth — post candidates</title>
+<title>Queryable Earth — {label.lower()} post candidates</title>
 <style>
   :root {{ color-scheme: light dark; }}
   body {{ font: 16px/1.55 -apple-system, Segoe UI, Roboto, sans-serif;
@@ -361,28 +393,35 @@ def render_html(candidates: list[dict], config: dict) -> str:
 </style></head>
 <body>
   <header>
-    <h1>Queryable Earth — post candidates</h1>
-    <p>{len(candidates)} candidates · ranked by longitudinal moat · {date.today():%d %B %Y}</p>
+    <h1>Queryable Earth — {label.lower()} post candidates</h1>
+    <p>{len(candidates)} candidates · ranked by longitudinal moat · {label} digest, last {window_days:g} day(s) · {date.today():%d %B %Y}</p>
   </header>
 {body}
 </body></html>
 """
 
 
-def _notify_html(candidates: list[dict], config: dict):
+def _notify_html(candidates: list[dict], config: dict, window_days: float):
     out_dir = config.get("output_dir", "out")
     os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"query-scout-{date.today():%Y-%m-%d}.html")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(render_html(candidates, config))
-    print(f"Wrote {path}", file=sys.stderr)
+    page = render_html(candidates, config, window_days)
+
+    dated_path = os.path.join(out_dir, f"query-scout-{date.today():%Y-%m-%d}.html")
+    # Also written to a stable filename so a double-click launcher always has
+    # one predictable path to open, instead of hunting for today's date.
+    latest_path = os.path.join(out_dir, "latest.html")
+    for path in (dated_path, latest_path):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(page)
+    print(f"Wrote {dated_path} (and {latest_path})", file=sys.stderr)
 
 
-def _notify_slack(candidates: list[dict], config: dict):
+def _notify_slack(candidates: list[dict], config: dict, window_days: float):
     """Post a summary to a Slack incoming webhook (SLACK_WEBHOOK_URL)."""
     import urllib.request
 
-    lines = ["*Queryable Earth — post candidates*"]
+    label = _window_label(config, window_days)
+    lines = [f"*Queryable Earth — {label.lower()} digest* (last {window_days:g} day(s))"]
     for i, c in enumerate(candidates, 1):
         lines.append(
             f"*{i}. {c.get('headline', '')}*  _(moat {c.get('longitudinal_moat')}, "
@@ -400,19 +439,20 @@ def _notify_slack(candidates: list[dict], config: dict):
     print(f"Posted {len(candidates)} candidates to Slack.", file=sys.stderr)
 
 
-def _notify_email(candidates: list[dict], config: dict):
+def _notify_email(candidates: list[dict], config: dict, window_days: float):
     """Send the console digest as an email over SMTP (STARTTLS)."""
     import smtplib
     from email.message import EmailMessage
     import io
     from contextlib import redirect_stdout
 
+    label = _window_label(config, window_days)
     buf = io.StringIO()
     with redirect_stdout(buf):
-        _notify_console(candidates, config)
+        _notify_console(candidates, config, window_days)
 
     msg = EmailMessage()
-    msg["Subject"] = f"Queryable Earth post candidates — {date.today():%d %b %Y}"
+    msg["Subject"] = f"Queryable Earth {label.lower()} post candidates — {date.today():%d %b %Y}"
     msg["From"] = os.environ["QUERYSCOUT_EMAIL_FROM"]
     msg["To"] = os.environ["QUERYSCOUT_EMAIL_TO"]
     msg.set_content(buf.getvalue() or "No candidates passed the filters.")
@@ -437,22 +477,38 @@ NOTIFIERS = {
 }
 
 
-def deliver(channel: str, candidates: list[dict], config: dict):
+def deliver(channel: str, candidates: list[dict], config: dict, window_days: float):
     notifier = NOTIFIERS[channel]
     missing = [v for v in notifier.env if not os.environ.get(v)]
     if missing:
         print(f"The '{channel}' channel needs environment variable(s) that are "
               f"not set: {', '.join(missing)}", file=sys.stderr)
         sys.exit(1)
-    notifier.deliver(candidates, config)
+    notifier.deliver(candidates, config, window_days)
 
 
 # --------------------------------------------------------------------------
 # CLI.
 # --------------------------------------------------------------------------
 
-def pipeline(config: dict) -> list[dict]:
-    """The real pipeline the live demo runs: ingest -> analyze -> rank."""
+def _ingest_and_analyze(client, config: dict, lookback_days: float) -> list[dict]:
+    print(f"Ingesting (last {lookback_days:g} day(s))…", file=sys.stderr)
+    items = ingest(config, lookback_days=lookback_days)
+    print(f"{len(items)} items after de-dupe.", file=sys.stderr)
+
+    print("Analyzing…", file=sys.stderr)
+    return rank(analyze(client, items, config))
+
+
+def pipeline(config: dict) -> tuple[list[dict], float]:
+    """The real pipeline the live demo runs: ingest -> analyze -> rank.
+
+    Runs against the daily lookback window first. If that comes back thinner
+    than min_candidates — a slow news day — it automatically retries against
+    the wider week_lookback_days window instead of shipping a sparse report.
+    Returns (candidates, window_days actually used) so delivery can label the
+    report correctly.
+    """
     try:
         import anthropic
     except ImportError:
@@ -462,19 +518,27 @@ def pipeline(config: dict) -> list[dict]:
         print("ANTHROPIC_API_KEY is not set.", file=sys.stderr)
         sys.exit(1)
 
-    print("Ingesting…", file=sys.stderr)
-    items = ingest(config)
-    print(f"{len(items)} items after de-dupe.", file=sys.stderr)
-
-    print("Analyzing…", file=sys.stderr)
     client = anthropic.Anthropic()          # reads ANTHROPIC_API_KEY
-    candidates = rank(analyze(client, items, config))
-    print(f"{len(candidates)} candidates passed the filters.", file=sys.stderr)
-    return candidates
+    day_window = config.get("lookback_days", 1)
+    week_window = config.get("week_lookback_days", 7)
+    min_candidates = config.get("min_candidates", 3)
+
+    window_days = day_window
+    candidates = _ingest_and_analyze(client, config, day_window)
+
+    if len(candidates) < min_candidates and week_window > day_window:
+        print(f"Only {len(candidates)} candidate(s) in the last {day_window:g} "
+              f"day(s) — expanding to a {week_window:g}-day window…", file=sys.stderr)
+        window_days = week_window
+        candidates = _ingest_and_analyze(client, config, week_window)
+
+    print(f"{len(candidates)} candidates passed the filters "
+          f"(last {window_days:g} day(s)).", file=sys.stderr)
+    return candidates, window_days
 
 
 def cmd_run(args, config: dict):
-    candidates = pipeline(config)
+    candidates, window_days = pipeline(config)
 
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
@@ -491,7 +555,7 @@ def cmd_run(args, config: dict):
         print(f"Unknown channel '{channel}'. Options: {', '.join(NOTIFIERS)}",
               file=sys.stderr)
         sys.exit(1)
-    deliver(channel, candidates[:config.get("top_n", len(candidates))], config)
+    deliver(channel, candidates[:config.get("top_n", len(candidates))], config, window_days)
 
 
 def main():
