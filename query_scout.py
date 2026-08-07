@@ -24,9 +24,12 @@ Usage:
 """
 
 import argparse
+import html
 import json
 import os
 import sys
+from dataclasses import dataclass, field
+from datetime import date
 
 CONFIG_PATH = "queryscout.config.json"
 MODEL = "claude-sonnet-4-6"
@@ -239,6 +242,212 @@ def rank(candidates: list[dict]) -> list[dict]:
 
 
 # --------------------------------------------------------------------------
+# 4. Deliver. A pluggable notifier interface — each channel is a function that
+#    takes the ranked candidate list and delivers it. Channels are swappable
+#    with --notify; each declares the env vars it needs so a missing credential
+#    fails loudly, naming the variable, instead of half-sending.
+# --------------------------------------------------------------------------
+
+@dataclass
+class Notifier:
+    deliver: object                 # callable(candidates, config) -> None
+    env: list = field(default_factory=list)   # required environment variables
+
+
+def _fmt_scores(c: dict) -> str:
+    return (f"moat {c.get('longitudinal_moat')}  ·  "
+            f"virality {c.get('virality')}  ·  "
+            f"confidence {c.get('confidence')}")
+
+
+def _notify_console(candidates: list[dict], config: dict):
+    """Human-readable digest to stdout. Needs no credentials."""
+    if not candidates:
+        print("No candidates passed the filters.")
+        return
+    for i, c in enumerate(candidates, 1):
+        print("\n" + "─" * 72)
+        print(f"[{i:02d}]  {c.get('headline', '')}")
+        print(f"      {_fmt_scores(c)}")
+        print(f"      source: {c.get('source', '')}")
+        if c.get("url"):
+            print(f"      {c['url']}")
+        for label, key in (("persona", "persona"), ("why", "why_they_care"),
+                           ("question", "business_question"),
+                           ("visibility", "visibility_reason"),
+                           ("hook", "linkedin_hook")):
+            if c.get(key):
+                print(f"      {label}: {c[key]}")
+        if c.get("queryable_earth_prompt"):
+            print(f"\n      PROMPT ▸ {c['queryable_earth_prompt']}")
+    print()
+
+
+def render_html(candidates: list[dict], config: dict) -> str:
+    """Self-contained HTML report — one ranked card per candidate. Every field
+    is model- or feed-sourced, so everything is escaped."""
+    def e(v):
+        return html.escape(str(v if v is not None else ""))
+
+    cards = []
+    for i, c in enumerate(candidates, 1):
+        headline = e(c.get("headline"))
+        url = c.get("url", "")
+        title = (f'<a href="{e(url)}" target="_blank" rel="noopener">{headline}</a>'
+                 if url.startswith(("http://", "https://")) else headline)
+        cards.append(f"""
+      <article class="card">
+        <div class="top">
+          <span class="rank">{i:02d}</span>
+          <h2>{title}</h2>
+        </div>
+        <p class="source">{e(c.get('source'))}</p>
+        <div class="scores">
+          <span class="moat">longitudinal moat {e(c.get('longitudinal_moat'))}</span>
+          <span>virality {e(c.get('virality'))}</span>
+          <span>confidence {e(c.get('confidence'))}</span>
+        </div>
+        <dl>
+          <dt>Persona</dt><dd>{e(c.get('persona'))}</dd>
+          <dt>Why they care</dt><dd>{e(c.get('why_they_care'))}</dd>
+          <dt>Business question</dt><dd>{e(c.get('business_question'))}</dd>
+          <dt>Visible from orbit</dt><dd>{e(c.get('visibility_reason'))}</dd>
+        </dl>
+        <div class="prompt">
+          <span class="label">Queryable Earth prompt</span>
+          <p>{e(c.get('queryable_earth_prompt'))}</p>
+        </div>
+        <p class="hook">“{e(c.get('linkedin_hook'))}”</p>
+      </article>""")
+
+    body = "\n".join(cards) or "<p class='empty'>No candidates passed the filters.</p>"
+    return f"""<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queryable Earth — post candidates</title>
+<style>
+  :root {{ color-scheme: light dark; }}
+  body {{ font: 16px/1.55 -apple-system, Segoe UI, Roboto, sans-serif;
+         max-width: 780px; margin: 0 auto; padding: 2rem 1.25rem; }}
+  header h1 {{ font-size: 1.4rem; margin: 0; }}
+  header p {{ color: #6b7280; margin: .25rem 0 2rem; }}
+  .card {{ border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem;
+          margin-bottom: 1.25rem; }}
+  .top {{ display: flex; gap: .75rem; align-items: baseline; }}
+  .rank {{ font-variant-numeric: tabular-nums; color: #9ca3af; font-weight: 700; }}
+  .top h2 {{ font-size: 1.1rem; margin: 0; }}
+  .source {{ color: #6b7280; font-size: .85rem; margin: .2rem 0 .6rem; }}
+  .scores {{ display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .9rem; }}
+  .scores span {{ font-size: .78rem; padding: .15rem .55rem; border-radius: 999px;
+                 background: #f3f4f6; color: #374151; }}
+  .scores .moat {{ background: #dbeafe; color: #1e40af; font-weight: 600; }}
+  dl {{ display: grid; grid-template-columns: max-content 1fr; gap: .3rem .9rem;
+       margin: 0 0 .9rem; }}
+  dt {{ color: #6b7280; font-size: .8rem; }}
+  dd {{ margin: 0; }}
+  .prompt {{ background: #0f172a; color: #e2e8f0; border-radius: 8px;
+            padding: .8rem .9rem; margin-bottom: .8rem; }}
+  .prompt .label {{ display: block; font-size: .7rem; letter-spacing: .05em;
+                   text-transform: uppercase; color: #94a3b8; margin-bottom: .3rem; }}
+  .prompt p {{ margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-size: .9rem; }}
+  .hook {{ font-style: italic; color: #4b5563; margin: 0; }}
+  @media (prefers-color-scheme: dark) {{
+    body {{ background: #0b0f19; color: #e5e7eb; }}
+    .card {{ border-color: #1f2937; }}
+    .scores span {{ background: #1f2937; color: #d1d5db; }}
+  }}
+</style></head>
+<body>
+  <header>
+    <h1>Queryable Earth — post candidates</h1>
+    <p>{len(candidates)} candidates · ranked by longitudinal moat · {date.today():%d %B %Y}</p>
+  </header>
+{body}
+</body></html>
+"""
+
+
+def _notify_html(candidates: list[dict], config: dict):
+    out_dir = config.get("output_dir", "out")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"query-scout-{date.today():%Y-%m-%d}.html")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(render_html(candidates, config))
+    print(f"Wrote {path}", file=sys.stderr)
+
+
+def _notify_slack(candidates: list[dict], config: dict):
+    """Post a summary to a Slack incoming webhook (SLACK_WEBHOOK_URL)."""
+    import urllib.request
+
+    lines = ["*Queryable Earth — post candidates*"]
+    for i, c in enumerate(candidates, 1):
+        lines.append(
+            f"*{i}. {c.get('headline', '')}*  _(moat {c.get('longitudinal_moat')}, "
+            f"virality {c.get('virality')}, confidence {c.get('confidence')})_\n"
+            f"▸ {c.get('queryable_earth_prompt', '')}")
+    payload = json.dumps({"text": "\n\n".join(lines)}).encode()
+
+    req = urllib.request.Request(
+        os.environ["SLACK_WEBHOOK_URL"], data=payload,
+        headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as resp:
+        if resp.status >= 300:
+            print(f"Slack webhook returned {resp.status}", file=sys.stderr)
+            sys.exit(1)
+    print(f"Posted {len(candidates)} candidates to Slack.", file=sys.stderr)
+
+
+def _notify_email(candidates: list[dict], config: dict):
+    """Send the console digest as an email over SMTP (STARTTLS)."""
+    import smtplib
+    from email.message import EmailMessage
+    import io
+    from contextlib import redirect_stdout
+
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        _notify_console(candidates, config)
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Queryable Earth post candidates — {date.today():%d %b %Y}"
+    msg["From"] = os.environ["QUERYSCOUT_EMAIL_FROM"]
+    msg["To"] = os.environ["QUERYSCOUT_EMAIL_TO"]
+    msg.set_content(buf.getvalue() or "No candidates passed the filters.")
+
+    host = os.environ["QUERYSCOUT_SMTP_HOST"]
+    port = int(os.environ.get("QUERYSCOUT_SMTP_PORT", "587"))
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.starttls()
+        smtp.login(os.environ["QUERYSCOUT_SMTP_USER"],
+                   os.environ["QUERYSCOUT_SMTP_PASSWORD"])
+        smtp.send_message(msg)
+    print(f"Emailed {len(candidates)} candidates to {msg['To']}.", file=sys.stderr)
+
+
+NOTIFIERS = {
+    "console": Notifier(_notify_console),
+    "html": Notifier(_notify_html),
+    "slack": Notifier(_notify_slack, env=["SLACK_WEBHOOK_URL"]),
+    "email": Notifier(_notify_email, env=[
+        "QUERYSCOUT_SMTP_HOST", "QUERYSCOUT_SMTP_USER", "QUERYSCOUT_SMTP_PASSWORD",
+        "QUERYSCOUT_EMAIL_FROM", "QUERYSCOUT_EMAIL_TO"]),
+}
+
+
+def deliver(channel: str, candidates: list[dict], config: dict):
+    notifier = NOTIFIERS[channel]
+    missing = [v for v in notifier.env if not os.environ.get(v)]
+    if missing:
+        print(f"The '{channel}' channel needs environment variable(s) that are "
+              f"not set: {', '.join(missing)}", file=sys.stderr)
+        sys.exit(1)
+    notifier.deliver(candidates, config)
+
+
+# --------------------------------------------------------------------------
 # CLI.
 # --------------------------------------------------------------------------
 
@@ -267,13 +476,22 @@ def pipeline(config: dict) -> list[dict]:
 def cmd_run(args, config: dict):
     candidates = pipeline(config)
 
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(candidates, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        print(f"Wrote {args.json}", file=sys.stderr)
+
     if args.dry_run:
         print(json.dumps(candidates, indent=2, ensure_ascii=False))
         return
 
-    # Delivery is wired in the next stage.
-    print("Analysis complete. Delivery not yet wired up — "
-          "use --dry-run to inspect ranked candidates.", file=sys.stderr)
+    channel = args.notify or config.get("notify", "html")
+    if channel not in NOTIFIERS:
+        print(f"Unknown channel '{channel}'. Options: {', '.join(NOTIFIERS)}",
+              file=sys.stderr)
+        sys.exit(1)
+    deliver(channel, candidates[:config.get("top_n", len(candidates))], config)
 
 
 def main():
