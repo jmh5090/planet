@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lgnd-geo": {
+      "type": "http",
+      "url": "https://geo.lgnd.ai/mcp"
+    }
+  }
+}
